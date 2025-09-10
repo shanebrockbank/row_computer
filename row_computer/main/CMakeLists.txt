@@ -1,0 +1,14 @@
+idf_component_register(
+    SRCS 
+        "main.c" 
+            "sensors/accel.c" 
+            "sensors/gyro.c" 
+            "sensors/mag.c"
+            "sensors/gps.c"
+            "utils/protocol_init.c"
+    INCLUDE_DIRS 
+        "."
+        "sensors"
+        "config"
+        "utils"
+)
