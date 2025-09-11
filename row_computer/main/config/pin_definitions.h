@@ -25,4 +25,11 @@
 #define SPI_SCLK_PIN                18
 #define SPI_CS_PIN                  5
 
+// MPU6050
+#define MPU6050_ADDR                0x68
+#define MPU6050_PWR_MGMT_1          0x6B
+#define MPU6050_ACCEL_XOUT_H        0x3
+#define MPU6050_ACCEL_CONFIG_REG    0x1C
+#define LSB_SENSITIVITY_2g          16384.0f
+
 #endif // PIN_DEFINITIONS_H

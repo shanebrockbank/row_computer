@@ -1,11 +1,11 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 
-static const char *TAG_ACCEL = "GYRO";
+static const char *TAG = "GYRO";
 
 esp_err_t gyro_init(void) {
     // Initialize your gyrometer (e.g., MPU6050, ADXL345, etc.)
-    ESP_LOGI(TAG_ACCEL, "Gyrometer initialized");
+    ESP_LOGI(TAG, "Gyrometer initialized");
     return ESP_OK;
 }
 

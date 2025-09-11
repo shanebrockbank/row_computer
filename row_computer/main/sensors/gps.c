@@ -1,11 +1,11 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 
-static const char *TAG_ACCEL = "GPS";
+static const char *TAG = "GPS";
 
 esp_err_t gps_init(void) {
     // Initialize your GPS (e.g., MPU6050, ADXL345, etc.)
-    ESP_LOGI(TAG_ACCEL, "GPS initialized");
+    ESP_LOGI(TAG, "GPS initialized");
     return ESP_OK;
 }
 

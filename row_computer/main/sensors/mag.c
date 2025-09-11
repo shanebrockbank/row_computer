@@ -1,11 +1,11 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 
-static const char *TAG_ACCEL = "MAG";
+static const char *TAG = "MAG";
 
 esp_err_t mag_init(void) {
     // Initialize your magnetometer
-    ESP_LOGI(TAG_ACCEL, "Magnetometer initialized");
+    ESP_LOGI(TAG, "Magnetometer initialized");
     return ESP_OK;
 }
 
