@@ -5,6 +5,7 @@ idf_component_register(
             "sensors/gyro.c" 
             "sensors/mag.c"
             "sensors/gps.c"
+            "sensors/sensors_common.c"
             "utils/protocol_init.c"
     INCLUDE_DIRS 
         "."

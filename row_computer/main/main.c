@@ -11,7 +11,7 @@
 #include "sensors/gps.h"
 #include "utils/protocol_init.h"
 
-static const char *TAG = "ROWING";
+static const char *TAG = "MAIN";
 
     // Start with bare minimum hardware validation
     void test_i2c_bus(void) {
@@ -36,6 +36,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Rowing computer starting...");
     // Initialize I2C for IMU/mag
     i2c_master_init();
+    test_i2c_bus();
 
     // Initialize SPI for GPS (if needed)
 
@@ -53,20 +54,20 @@ void app_main(void)
     while (1) {
         // Read and print sensor data
         if (accel_read(&ax, &ay, &az) == ESP_OK) {
-            ESP_LOGI(TAG, "Accel: X=%.2f Y=%.2f Z=%.2f", ax, ay, az);
+            //ESP_LOGI(TAG, "Accel: X=%.2f Y=%.2f Z=%.2f", ax, ay, az);
         }
 
-        // if (gyro_read(&gx, &gy, &gz) == ESP_OK) {
-        //     ESP_LOGI(TAG, "Gyro: X=%.2f Y=%.2f Z=%.2f", gx, gy, gz);
-        // }
+        if (gyro_read(&gx, &gy, &gz) == ESP_OK) {
+            //ESP_LOGI(TAG, "Gyro:  X=%.2f Y=%.2f Z=%.2f", gx, gy, gz);
+        }
 
-        // if (mag_read(&mx, &my, &mz) == ESP_OK) {
-        //     ESP_LOGI(TAG, "Mag: X=%.2f Y=%.2f Z=%.2f", mx, my, mz);
-        // }
+        if (mag_read(&mx, &my, &mz) == ESP_OK) {
+            ESP_LOGI(TAG, "Mag: X=%.2f Y=%.2f Z=%.2f", mx, my, mz);
+        }
 
         // if (gps_read(&lat, &lon, &spd) == ESP_OK) {
         //     ESP_LOGI(TAG, "GPS: X=%.2f Y=%.2f Z=%.2f", lat, lon, spd);
         // }
-        vTaskDelay(pdMS_TO_TICKS(500)); // 10Hz for now
+        vTaskDelay(pdMS_TO_TICKS(500)); 
     }
 }

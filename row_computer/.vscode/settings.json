@@ -18,7 +18,8 @@
   ],
   "files.associations": {
     "i2c.h": "c",
-    "gyro.h": "c"
+    "gyro.h": "c",
+    "esp_log.h": "c"
   },
   "idf.flashType": "UART"
 }
