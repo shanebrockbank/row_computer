@@ -11,13 +11,14 @@
 #define I2C_MASTER_TIMEOUT_MS       1000
 
 // UART Configuration (for GPS)
-#define GPS_UART_NUM                UART_NUM_1
+#define GPS_UART_NUM                UART_NUM_2
 #define GPS_UART_BAUD_RATE          9600
-#define GPS_UART_TXD_PIN            4
-#define GPS_UART_RXD_PIN            5
+#define GPS_UART_TXD_PIN            17
+#define GPS_UART_RXD_PIN            16
 #define GPS_UART_RTS_PIN            UART_PIN_NO_CHANGE
 #define GPS_UART_CTS_PIN            UART_PIN_NO_CHANGE
 #define GPS_UART_BUF_SIZE           1024
+#define MAX_NMEA_LEN                256
 
 // SPI Configuration (if needed for other sensors)
 #define SPI_MOSI_PIN                23

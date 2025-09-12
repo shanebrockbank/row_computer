@@ -47,8 +47,6 @@ esp_err_t mag_read(float *x, float *y, float *z)
     int16_t raw_z = (int16_t)((data[2] << 8) | data[3]);
     int16_t raw_y = (int16_t)((data[4] << 8) | data[5]);
 
-    ESP_LOGI(TAG, "Raw int16: X=%d Y=%d Z=%d", raw_x, raw_y, raw_z);
-
     *x = raw_x * MAG_SCALE_1_3_GAUSS;
     *y = raw_y * MAG_SCALE_1_3_GAUSS;
     *z = raw_z * MAG_SCALE_1_3_GAUSS;

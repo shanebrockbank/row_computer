@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "driver/spi_master.h"
+#include "config/pin_definitions.h"
 #include "sensors/accel.h"
 #include "sensors/gyro.h"
 #include "sensors/mag.h"
@@ -22,7 +23,7 @@ static const char *TAG = "MAIN";
             i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
             i2c_master_stop(cmd);
             
-            esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, 50 / portTICK_PERIOD_MS);
+            esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(50));
             i2c_cmd_link_delete(cmd);
             
             if (ret == ESP_OK) {
@@ -34,9 +35,11 @@ static const char *TAG = "MAIN";
 void app_main(void)
 {
     ESP_LOGI(TAG, "Rowing computer starting...");
+    vTaskDelay(pdMS_TO_TICKS(1000));
     // Initialize I2C for IMU/mag
     i2c_master_init();
-    test_i2c_bus();
+    //uart_gps_init();
+    
 
     // Initialize SPI for GPS (if needed)
 
@@ -47,8 +50,9 @@ void app_main(void)
     mag_init();
     float mx, my, mz;
     gps_init();
-    float lat, lon, spd;
+    gps_data_t gps_data;
 
+    //uart_loopback_test();
     //test_i2c_bus();
 
     while (1) {
@@ -62,12 +66,13 @@ void app_main(void)
         }
 
         if (mag_read(&mx, &my, &mz) == ESP_OK) {
-            ESP_LOGI(TAG, "Mag: X=%.2f Y=%.2f Z=%.2f", mx, my, mz);
+            //ESP_LOGI(TAG, "Mag: X=%.2f Y=%.2f Z=%.2f", mx, my, mz);
         }
-
-        // if (gps_read(&lat, &lon, &spd) == ESP_OK) {
-        //     ESP_LOGI(TAG, "GPS: X=%.2f Y=%.2f Z=%.2f", lat, lon, spd);
-        // }
+        //gps_task();
+        if (gps_read(&gps_data) == ESP_OK) {
+            ESP_LOGI(TAG, "GPS: X=%.2f Y=%.2f Z=%.2f", 
+                    gps_data.latitude, gps_data.longitude, gps_data.speed_knots);
+        }
         vTaskDelay(pdMS_TO_TICKS(500)); 
     }
 }
