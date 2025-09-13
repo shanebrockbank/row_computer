@@ -5,32 +5,33 @@
 
 static const char *TAG = "MAG";
 
-void mag_init(void)
+esp_err_t mag_init(void)
 {
     esp_err_t err;
     
-    // Configuration Register A
+    // Configuration Register A - Set samples averaging
     err = mag_write_byte(HMC5883L_REG_CONFIG_A, HMC5883L_SAMPLES_8);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure HMC5883L register A: %s", esp_err_to_name(err));
-        return;
+        return err;  // Return error 
     }
     
     // Configuration Register B
     err = mag_write_byte(HMC5883L_REG_CONFIG_B, HMC5883L_DATARATE_15HZ);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure HMC5883L register B: %s", esp_err_to_name(err));
-        return;
+        return err;
     }
     
     // Mode Register
     err = mag_write_byte(HMC5883L_REG_MODE, HMC5883L_MEAS_NORMAL);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set HMC5883L mode: %s", esp_err_to_name(err));
-        return;
+        return err;
     }
     
-    ESP_LOGI(TAG, "HMC5883L initialized successfully");
+    ESP_LOGI(TAG, "Magnetometer initialized successfully");
+    return ESP_OK;
 }
 
 esp_err_t mag_read(float *x, float *y, float *z)

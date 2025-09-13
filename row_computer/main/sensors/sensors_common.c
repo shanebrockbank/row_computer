@@ -1,12 +1,24 @@
 #include "esp_log.h"
 #include "driver/i2c.h"
 #include "config/pin_definitions.h"
+#include "sensors/accel.h"
+#include "sensors/gyro.h"
+#include "sensors/mag.h"
+#include "sensors/gps.h"
 
 static const char *TAG = "SENSORS_COMMON";
+
+void sensors_init(void){
+    accel_init();  // MPU6050 accelerometer
+    gyro_init();   // MPU6050 gyroscope (same device)
+    mag_init();    // HMC5883L magnetometer
+    gps_init();    // NEO-6M GPS module
+}
 
 // Write register
 esp_err_t mpu6050_write_byte(uint8_t reg_addr, uint8_t data) {
     uint8_t write_buf[2] = {reg_addr, data};
+    // 1000ms timeout prevents system hang if sensor disconnected
     return i2c_master_write_to_device(I2C_MASTER_NUM, MPU6050_ADDR, write_buf, 2, pdMS_TO_TICKS(1000));
 }
 

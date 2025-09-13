@@ -9,11 +9,11 @@ typedef struct {
     float heading;
     int satellites;
     bool valid_fix;
+    uint32_t timestamp_ms;
 } gps_data_t;
 
 esp_err_t gps_init(void);
 esp_err_t gps_read(gps_data_t *gps_data);
-void gps_task(void);
 void uart_loopback_test(void);
 
 #endif

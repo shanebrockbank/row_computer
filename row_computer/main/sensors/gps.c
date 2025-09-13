@@ -33,41 +33,7 @@ esp_err_t gps_enable_nmea(void) {
     return ESP_OK;
 }
 
-esp_err_t gps_init(void) {
-    ESP_LOGI(TAG, "Initializing GPS UART...");
-    
-    // Basic UART configuration
-    const uart_config_t uart_config = {
-        .baud_rate = GPS_UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-    
-    // Install UART driver
-    esp_err_t err = uart_driver_install(GPS_UART_NUM, GPS_UART_BUF_SIZE * 2, 0, 0, NULL, 0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(err));
-        return err;
-    }
-    
-    // Configure UART parameters
-    err = uart_param_config(GPS_UART_NUM, &uart_config);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure UART: %s", esp_err_to_name(err));
-        return err;
-    }
-    
-    // Set UART pins
-    err = uart_set_pin(GPS_UART_NUM, GPS_UART_TXD_PIN, GPS_UART_RXD_PIN, 
-                       GPS_UART_RTS_PIN, GPS_UART_CTS_PIN);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set UART pins: %s", esp_err_to_name(err));
-        return err;
-    }
-    
+esp_err_t gps_init(void) {    
     ESP_LOGI(TAG, "GPS UART initialized on pins TX=%d, RX=%d at %d baud", 
              GPS_UART_TXD_PIN, GPS_UART_RXD_PIN, GPS_UART_BAUD_RATE);
 
@@ -78,18 +44,28 @@ esp_err_t gps_init(void) {
 
 static gps_data_t gps_data = {0};
 
+//TODO add in actual logging to the retun 0.0 lines
 // Convert NMEA coordinate to decimal degrees
 double nmea_to_decimal(const char *coord, const char *direction) {
     if (!coord || strlen(coord) == 0) return 0.0;
-
+    
     double val = atof(coord);
-    int degrees = (int)(val / 100);
-    double minutes = val - (degrees * 100);
-    double decimal = degrees + (minutes / 60.0);
-
+    // Validate coordinate range before processing
+    // coord = "4807.038" (48°07.038'), val = 4807.038
+    if (val < 0 || val > 18000) return 0.0; // Basic sanity check
+    
+    int degrees = (int)(val / 100); // degrees = 48
+    double minutes = val - (degrees * 100); // minutes = 7.038
+    
+    // Validate minutes range 
+    if (minutes >= 60.0) return 0.0;
+    
+    double decimal = degrees + (minutes / 60.0); // 48 + (7.038/60) = 48.1173°
+    
+    // Apply hemisphere direction
     if (direction && (*direction == 'S' || *direction == 'W'))
         decimal = -decimal;
-
+    
     return decimal;
 }
 

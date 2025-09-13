@@ -19,7 +19,10 @@
   "files.associations": {
     "i2c.h": "c",
     "gyro.h": "c",
-    "esp_log.h": "c"
+    "esp_log.h": "c",
+    "mag.h": "c",
+    "pin_definitions.h": "c",
+    "sensors_common.h": "c"
   },
   "idf.flashType": "UART"
 }

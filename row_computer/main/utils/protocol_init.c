@@ -36,6 +36,24 @@ esp_err_t i2c_master_init(void) {
     return ESP_OK;
 }
 
+// Start with bare minimum hardware validation
+void test_i2c_bus(void) {
+    // Scan I2C bus to find your devices
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
+        i2c_master_stop(cmd);
+        
+        esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(50));
+        i2c_cmd_link_delete(cmd);
+        
+        if (ret == ESP_OK) {
+            ESP_LOGI("I2C_SCAN", "Found device at address 0x%02X", addr);
+        }
+    }
+}
+
 esp_err_t uart_gps_init(void) {
     ESP_LOGI(TAG, "Initializing UART for GPS...");
     
