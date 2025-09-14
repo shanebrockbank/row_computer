@@ -6,16 +6,7 @@
 #include "config/pin_definitions.h"
 #include "sensors_common.h"
 
-static const char *TAG = "SENSORS_COMMON"; 
-
-// Task handles for monitoring/control
-TaskHandle_t imu_task_handle = NULL;
-TaskHandle_t gps_task_handle = NULL;
-TaskHandle_t logging_task_handle = NULL;
-
-// Communication queues
-QueueHandle_t imu_data_queue = NULL;
-QueueHandle_t gps_data_queue = NULL;
+static const char *TAG = "TASKS_COMMON"; 
 
 // Create inter-task communication queues
 esp_err_t create_inter_task_comm(void){
@@ -24,15 +15,14 @@ esp_err_t create_inter_task_comm(void){
 
     if (imu_data_queue == NULL || gps_data_queue == NULL) {
         ESP_LOGE(TAG, "Failed to create communication queues");
-        return;
+        return ESP_FAIL;
     }
     ESP_LOGI(TAG, "Communication queues created");
+    return ESP_OK;
 }
 
 // Create sensor tasks with appropriate priorities
 esp_err_t create_tasks(void){
-
-
     xTaskCreatePinnedToCore(
         imu_task,           // Task function
         "IMU_TASK",         // Task name
@@ -65,5 +55,5 @@ esp_err_t create_tasks(void){
     
     ESP_LOGI(TAG, "All tasks created and running");
     ESP_LOGI(TAG, "=== System Ready for Rowing ===");
-
+    return ESP_OK;
 }

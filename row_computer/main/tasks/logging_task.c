@@ -2,6 +2,7 @@
 #include "driver/i2c.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include <math.h>
 #include "tasks/tasks_common.h"
 #include "config/pin_definitions.h"
 #include "sensors_common.h"

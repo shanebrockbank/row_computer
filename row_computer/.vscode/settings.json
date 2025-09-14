@@ -26,7 +26,8 @@
     "protocol_init.h": "c",
     "spi_master.h": "c",
     "freertos.h": "c",
-    "logging_task.h": "c"
+    "logging_task.h": "c",
+    "tasks_common.h": "c"
   },
   "idf.flashType": "UART"
 }

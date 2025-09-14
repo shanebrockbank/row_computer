@@ -13,6 +13,14 @@
 
 static const char *TAG = "MAIN";
 
+// Define the global variables that are declared extern in tasks_common.h
+TaskHandle_t imu_task_handle = NULL;
+TaskHandle_t gps_task_handle = NULL;
+TaskHandle_t logging_task_handle = NULL;
+
+QueueHandle_t imu_data_queue = NULL;
+QueueHandle_t gps_data_queue = NULL;
+
 void app_main(void) {
     ESP_LOGI(TAG, "=== Rowing Computer Starting ===");
     
@@ -30,10 +38,11 @@ void app_main(void) {
     if (mag_init() != ESP_OK) ESP_LOGW(TAG, "Magnetometer init failed");
     if (gps_init() != ESP_OK) ESP_LOGW(TAG, "GPS init failed");
     
+    // Create communication queues
     create_inter_task_comm();
     
     // Create sensor tasks with appropriate priorities
-    esp_err_t create_tasks();
+    create_tasks();
     
     // Main task becomes system monitor
     while (1) {
