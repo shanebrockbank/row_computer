@@ -1,6 +1,11 @@
 #ifndef SENSORS_COMMON_H
 #define SENSORS_COMMON_H
 
+#include "sensors/accel.h"
+#include "sensors/gyro.h"
+#include "sensors/mag.h"
+#include "sensors/gps.h"
+
 typedef struct {
     uint32_t timestamp_ms;
     float accel_x, accel_y, accel_z;    // g-forces

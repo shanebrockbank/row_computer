@@ -22,7 +22,11 @@
     "esp_log.h": "c",
     "mag.h": "c",
     "pin_definitions.h": "c",
-    "sensors_common.h": "c"
+    "sensors_common.h": "c",
+    "protocol_init.h": "c",
+    "spi_master.h": "c",
+    "freertos.h": "c",
+    "logging_task.h": "c"
   },
   "idf.flashType": "UART"
 }
