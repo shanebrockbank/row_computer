@@ -7,6 +7,7 @@ idf_component_register(
         "sensors/gps.c"
         "sensors/sensors_common.c"
         "utils/protocol_init.c"
+        "utils/timing.c"
         "tasks/tasks_common.c"
         "tasks/sensor_task.c"
         "tasks/gps_task.c"
