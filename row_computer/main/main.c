@@ -24,6 +24,13 @@ QueueHandle_t gps_data_queue = NULL;
 void app_main(void) {
     ESP_LOGI(TAG, "=== Rowing Computer Starting ===");
     
+    // Enable detailed GPS logging
+    esp_log_level_set("GPS", ESP_LOG_DEBUG);        // Show all GPS debug messages
+    esp_log_level_set("GPS_TASK", ESP_LOG_DEBUG);   // Show GPS task debug messages
+    
+    // Optional: Enable UART driver logging to see low-level UART issues
+    // esp_log_level_set("uart", ESP_LOG_DEBUG);
+    
     // Initialize hardware protocols
     ESP_LOGI(TAG, "Initializing communication protocols...");
     if (protocols_init() != ESP_OK) {
@@ -38,6 +45,18 @@ void app_main(void) {
     if (mag_init() != ESP_OK) ESP_LOGW(TAG, "Magnetometer init failed");
     if (gps_init() != ESP_OK) ESP_LOGW(TAG, "GPS init failed");
     
+    // // Optional: Add a manual GPS communication test
+    // ESP_LOGI(TAG, "Testing GPS communication...");
+    // if (gps_test_communication() == ESP_OK) {
+    //     ESP_LOGI(TAG, "✓ GPS module is responding");
+    // } else {
+    //     ESP_LOGE(TAG, "✗ GPS module not responding - check wiring!");
+    //     // Run raw debug to see what's happening
+    //     ESP_LOGI(TAG, "Running GPS raw data debug...");
+    //     gps_debug_raw_data();
+    // }
+    // manual_gps_test();
+    
     // Create communication queues
     create_inter_task_comm();
     
@@ -48,12 +67,6 @@ void app_main(void) {
     while (1) {
         // Monitor system health
         ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
-        
-        // // Check task health (optional)
-        // if (eTaskGetState(imu_task_handle) == eSuspended) {
-        //     ESP_LOGE(TAG, "IMU task has stopped!");
-        // }
-        
         vTaskDelay(pdMS_TO_TICKS(10000)); // Report every 10 seconds
     }
 }

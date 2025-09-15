@@ -38,7 +38,9 @@ esp_err_t i2c_master_init(void) {
 
 // Start with bare minimum hardware validation
 void test_i2c_bus(void) {
-    // Scan I2C bus to find your devices
+    ESP_LOGI(TAG, "Scanning I2C bus...");
+    int devices_found = 0;
+    
     for (uint8_t addr = 1; addr < 127; addr++) {
         i2c_cmd_handle_t cmd = i2c_cmd_link_create();
         i2c_master_start(cmd);
@@ -49,45 +51,16 @@ void test_i2c_bus(void) {
         i2c_cmd_link_delete(cmd);
         
         if (ret == ESP_OK) {
-            ESP_LOGI("I2C_SCAN", "Found device at address 0x%02X", addr);
+            ESP_LOGI(TAG, "Found I2C device at address 0x%02X", addr);
+            devices_found++;
         }
     }
-}
-
-esp_err_t uart_gps_init(void) {
-    ESP_LOGI(TAG, "Initializing UART for GPS...");
     
-    const uart_config_t uart_config = {
-        .baud_rate = GPS_UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
-    
-    esp_err_t err = uart_driver_install(GPS_UART_NUM, GPS_UART_BUF_SIZE * 2, 
-                                       0, 0, NULL, 0);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "UART driver install failed: %s", esp_err_to_name(err));
-        return err;
+    if (devices_found == 0) {
+        ESP_LOGW(TAG, "No I2C devices found - check connections");
+    } else {
+        ESP_LOGI(TAG, "I2C scan complete - found %d devices", devices_found);
     }
-    
-    err = uart_param_config(GPS_UART_NUM, &uart_config);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "UART param config failed: %s", esp_err_to_name(err));
-        return err;
-    }
-    
-    err = uart_set_pin(GPS_UART_NUM, GPS_UART_TXD_PIN, GPS_UART_RXD_PIN, 
-                      GPS_UART_RTS_PIN, GPS_UART_CTS_PIN);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "UART set pin failed: %s", esp_err_to_name(err));
-        return err;
-    }
-    
-    ESP_LOGI(TAG, "UART for GPS initialized successfully");
-    return ESP_OK;
 }
 
 esp_err_t spi_master_init(void) {
@@ -113,7 +86,7 @@ esp_err_t spi_master_init(void) {
 }
 
 esp_err_t protocols_init(void) {
-    ESP_LOGI(TAG, "Initializing all communication protocols...");
+    ESP_LOGI(TAG, "Initializing communication protocols...");
     
     esp_err_t err;
     
@@ -123,11 +96,10 @@ esp_err_t protocols_init(void) {
         return err;
     }
     
-    // Initialize UART (for GPS)
-    err = uart_gps_init();
-    if (err != ESP_OK) {
-        return err;
-    }
+    // Test I2C bus to verify sensors are connected
+    test_i2c_bus();
+    
+    // Note: GPS UART is now initialized in gps_init() to avoid conflicts
     
     // Initialize SPI (if needed for additional sensors)
     // Uncomment if you have SPI sensors
@@ -136,7 +108,7 @@ esp_err_t protocols_init(void) {
     //     return err;
     // }
     
-    ESP_LOGI(TAG, "All protocols initialized successfully");
+    ESP_LOGI(TAG, "Core protocols initialized successfully");
     return ESP_OK;
 }
 
@@ -144,7 +116,7 @@ esp_err_t protocols_deinit(void) {
     ESP_LOGI(TAG, "Deinitializing protocols...");
     
     i2c_driver_delete(I2C_MASTER_NUM);
-    uart_driver_delete(GPS_UART_NUM);
+    // Note: GPS UART cleanup is handled in GPS module
     // spi_bus_free(SPI2_HOST);  // If SPI was initialized
     
     ESP_LOGI(TAG, "All protocols deinitialized");

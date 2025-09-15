@@ -26,6 +26,9 @@
 #define SPI_SCLK_PIN                18
 #define SPI_CS_PIN                  5
 
+// NEOM8N GPS
+#define GPS_TIMEOUT_MS              500
+
 // MPU6050
 #define MPU6050_ADDR                0x68            // I2C address
 #define MPU6050_PWR_MGMT_1          0x6B
