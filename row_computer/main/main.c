@@ -45,17 +45,17 @@ void app_main(void) {
     if (mag_init() != ESP_OK) ESP_LOGW(TAG, "Magnetometer init failed");
     if (gps_init() != ESP_OK) ESP_LOGW(TAG, "GPS init failed");
     
-    // // Optional: Add a manual GPS communication test
-    // ESP_LOGI(TAG, "Testing GPS communication...");
-    // if (gps_test_communication() == ESP_OK) {
-    //     ESP_LOGI(TAG, "✓ GPS module is responding");
-    // } else {
-    //     ESP_LOGE(TAG, "✗ GPS module not responding - check wiring!");
-    //     // Run raw debug to see what's happening
-    //     ESP_LOGI(TAG, "Running GPS raw data debug...");
-    //     gps_debug_raw_data();
-    // }
-    // manual_gps_test();
+    // Optional: Add a manual GPS communication test
+    ESP_LOGI(TAG, "Testing GPS communication...");
+    if (gps_test_communication() == ESP_OK) {
+        ESP_LOGI(TAG, "✓ GPS module is responding");
+    } else {
+        ESP_LOGE(TAG, "✗ GPS module not responding - check wiring!");
+        // Run raw debug to see what's happening
+        ESP_LOGI(TAG, "Running GPS raw data debug...");
+        gps_debug_raw_data();
+    }
+    manual_gps_test();
     
     // Create communication queues
     create_inter_task_comm();
@@ -66,7 +66,7 @@ void app_main(void) {
     // Main task becomes system monitor
     while (1) {
         // Monitor system health
-        ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
+        //ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
         vTaskDelay(pdMS_TO_TICKS(10000)); // Report every 10 seconds
     }
 }
