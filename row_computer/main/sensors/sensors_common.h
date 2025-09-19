@@ -1,8 +1,7 @@
 #ifndef SENSORS_COMMON_H
 #define SENSORS_COMMON_H
 
-#include "sensors/accel.h"
-#include "sensors/gyro.h"
+#include "sensors/mpu6050.h"
 #include "sensors/mag.h"
 #include "sensors/gps.h"
 
@@ -16,19 +15,15 @@ typedef struct {
 // Initialize all sensors
 void sensors_init(void);
 
-// MPU6050 Write register
+// MPU6050 I2C communication functions
 esp_err_t mpu6050_write_byte(uint8_t reg_addr, uint8_t data);
-
-// MPU6050  Read registers
 esp_err_t mpu6050_read_bytes(uint8_t reg_addr, uint8_t *data, size_t len);
 
-// Combine bytes
+// Utility functions
 int16_t combine_bytes(uint8_t high, uint8_t low);
 
-// HMC5883L  Write register
+// HMC5883L I2C communication functions
 esp_err_t mag_write_byte(uint8_t reg_addr, uint8_t data);
-
-// HMC5883L  Read registers
 esp_err_t mag_read_bytes(uint8_t reg_addr, uint8_t *data, size_t len);
 
 #endif

@@ -8,6 +8,7 @@
 #include "driver/spi_master.h"
 #include "config/pin_definitions.h"
 #include "sensors/sensors_common.h"
+#include "sensors/mpu6050.h"
 #include "tasks/tasks_common.h"
 #include "utils/protocol_init.h"
 
@@ -40,8 +41,7 @@ void app_main(void) {
     
     // Initialize sensors
     ESP_LOGI(TAG, "Initializing sensors...");
-    if (accel_init() != ESP_OK) ESP_LOGW(TAG, "Accelerometer init failed");
-    if (gyro_init() != ESP_OK) ESP_LOGW(TAG, "Gyroscope init failed"); 
+    if (mpu6050_init() != ESP_OK) ESP_LOGW(TAG, "MPU6050 (accel+gyro) init failed");
     if (mag_init() != ESP_OK) ESP_LOGW(TAG, "Magnetometer init failed");
     if (gps_init() != ESP_OK) ESP_LOGW(TAG, "GPS init failed");
     
@@ -55,8 +55,7 @@ void app_main(void) {
         ESP_LOGI(TAG, "Running GPS raw data debug...");
         gps_debug_raw_data();
     }
-    manual_gps_test();
-    
+
     // Create communication queues
     create_inter_task_comm();
     

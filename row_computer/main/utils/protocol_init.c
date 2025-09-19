@@ -1,5 +1,6 @@
 #include "protocol_init.h"
 #include "pin_definitions.h"
+#include "common_constants.h"
 #include "driver/i2c.h"
 #include "driver/uart.h"
 #include "driver/spi_master.h"
@@ -47,7 +48,7 @@ void test_i2c_bus(void) {
         i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
         i2c_master_stop(cmd);
         
-        esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(50));
+        esp_err_t ret = i2c_master_cmd_begin(I2C_NUM_0, cmd, pdMS_TO_TICKS(I2C_SCAN_TIMEOUT_MS));
         i2c_cmd_link_delete(cmd);
         
         if (ret == ESP_OK) {

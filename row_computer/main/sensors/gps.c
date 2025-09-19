@@ -1,6 +1,7 @@
 #include "esp_log.h"
 #include "driver/uart.h"
 #include "config/pin_definitions.h"
+#include "config/common_constants.h"
 #include "gps.h"
 #include "esp_mac.h"
 #include <string.h>
@@ -75,8 +76,8 @@ esp_err_t gps_test_communication(void) {
     
     // Wait for some data to arrive (GPS should be transmitting)
     char test_buffer[256];
-    int len = uart_read_bytes(GPS_UART_NUM, (uint8_t*)test_buffer, 
-                             sizeof(test_buffer)-1, pdMS_TO_TICKS(2000)); // 2 second timeout
+    int len = uart_read_bytes(GPS_UART_NUM, (uint8_t*)test_buffer,
+                             sizeof(test_buffer)-1, pdMS_TO_TICKS(GPS_COMMUNICATION_TEST_TIMEOUT_MS));
     
     if (len > 0) {
         test_buffer[len] = '\0';
@@ -96,13 +97,13 @@ esp_err_t gps_configure_module(void) {
     
     // Send UBX commands to enable specific NMEA sentences
     uart_write_bytes(GPS_UART_NUM, (const char*)UBX_SET_1HZ, sizeof(UBX_SET_1HZ));
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_STABILIZE_DELAY_MS));
     
     uart_write_bytes(GPS_UART_NUM, (const char*)UBX_ENABLE_GGA, sizeof(UBX_ENABLE_GGA));
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_STABILIZE_DELAY_MS));
     
     uart_write_bytes(GPS_UART_NUM, (const char*)UBX_ENABLE_RMC, sizeof(UBX_ENABLE_RMC));
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(SENSOR_STABILIZE_DELAY_MS));
     
     ESP_LOGI(TAG, "GPS configuration commands sent");
     return ESP_OK;
@@ -214,36 +215,40 @@ static void process_nmea_sentence(char *sentence) {
     }
 }
 
-esp_err_t gps_read(gps_data_t *out_data) {
-    static char rx_buffer[GPS_UART_BUF_SIZE];
-    static char nmea_line[MAX_NMEA_LEN];
-    static int line_pos = 0;
+// Read raw UART data with timeout and connection monitoring
+static esp_err_t gps_read_uart_data(char *buffer, size_t buffer_size, int *bytes_read) {
     static uint32_t last_data_time = 0;
-    
-    int len = uart_read_bytes(GPS_UART_NUM, (uint8_t*)rx_buffer,
-                              sizeof(rx_buffer)-1, pdMS_TO_TICKS(GPS_TIMEOUT_MS)); 
-    
-    if (len <= 0) {
+
+    *bytes_read = uart_read_bytes(GPS_UART_NUM, (uint8_t*)buffer,
+                                  buffer_size-1, pdMS_TO_TICKS(GPS_TIMEOUT_MS));
+
+    if (*bytes_read <= 0) {
         uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
-        if (current_time - last_data_time > 5000) { // No data for 5 seconds
-            ESP_LOGW(TAG, "No GPS data received for 5 seconds - check connections");
+        if (current_time - last_data_time > GPS_DATA_TIMEOUT_MS) { // No GPS data warning
+            ESP_LOGW(TAG, "No GPS data received - check connections");
             last_data_time = current_time;
         }
         return ESP_ERR_NOT_FOUND;
     }
 
-    // Update last data time
+    // Update last data time and add debug logging
     last_data_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    
-    // Log raw data occasionally for debugging
     static int debug_counter = 0;
-    if (++debug_counter >= 50) { // Every ~50 calls
-        ESP_LOGD(TAG, "Raw GPS data (%d bytes): %.50s", len, rx_buffer);
+    if (++debug_counter >= GPS_DEBUG_LOG_INTERVAL) { // Debug logging interval
+        ESP_LOGD(TAG, "Raw GPS data (%d bytes): %.50s", *bytes_read, buffer);
         debug_counter = 0;
     }
 
-    for (int i = 0; i < len; i++) {
-        char c = rx_buffer[i];
+    return ESP_OK;
+}
+
+// Parse UART buffer into NMEA sentences
+static void gps_parse_nmea_buffer(const char *buffer, int buffer_len) {
+    static char nmea_line[MAX_NMEA_LEN];
+    static int line_pos = 0;
+
+    for (int i = 0; i < buffer_len; i++) {
+        char c = buffer[i];
         if (c == '\n' || c == '\r') {
             if (line_pos > 0) {
                 nmea_line[line_pos] = '\0';
@@ -258,77 +263,46 @@ esp_err_t gps_read(gps_data_t *out_data) {
             line_pos = 0;
         }
     }
+}
 
-    // Copy internal gps_data to caller
+// Main GPS read function - now simplified and focused
+esp_err_t gps_read(gps_data_t *out_data) {
+    if (out_data == NULL) {
+        ESP_LOGE(TAG, "GPS output data pointer is NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    char rx_buffer[GPS_UART_BUF_SIZE];
+    int bytes_read;
+
+    // Read UART data
+    esp_err_t err = gps_read_uart_data(rx_buffer, sizeof(rx_buffer), &bytes_read);
+    if (err != ESP_OK) {
+        return err;
+    }
+
+    // Parse NMEA sentences from buffer
+    gps_parse_nmea_buffer(rx_buffer, bytes_read);
+
+    // Copy parsed data to caller
     *out_data = gps_data;
     return ESP_OK;
 }
 
-// Print formatted GPS data
-void print_gps_data(void) {
-    printf("\n=== GPS Data ===\n");
-    printf("Time:      %s UTC\n", strlen(gps_data.time) > 0 ? gps_data.time : "No fix");
-    printf("Status:    %s\n", gps_data.valid_fix ? "Valid Fix" : "No Fix");
-    printf("Latitude:  %.6f°\n", gps_data.latitude);
-    printf("Longitude: %.6f°\n", gps_data.longitude);
-    printf("Speed:     %.1f knots (%.1f km/h)\n", gps_data.speed_knots, gps_data.speed_knots * 1.852);
-    printf("Heading:   %.1f°\n", gps_data.heading);
-    printf("Satellites: %d\n", gps_data.satellites);
-    printf("================\n\n");
-}
-
-// Simple test function to debug GPS
+// Simplified GPS debug function (replaces multiple verbose test functions)
 void gps_debug_raw_data(void) {
-    ESP_LOGI(TAG, "=== GPS Raw Data Debug ===");
-    char buffer[512];
-    
-    for (int i = 0; i < 10; i++) { // Read 10 times
-        int len = uart_read_bytes(GPS_UART_NUM, (uint8_t*)buffer, 
+    ESP_LOGI(TAG, "GPS Debug: Reading 3 samples...");
+    char buffer[256];
+
+    for (int i = 0; i < 3; i++) {
+        int len = uart_read_bytes(GPS_UART_NUM, (uint8_t*)buffer,
                                  sizeof(buffer)-1, pdMS_TO_TICKS(1000));
         if (len > 0) {
             buffer[len] = '\0';
-            ESP_LOGI(TAG, "Read %d: %s", i, buffer);
+            ESP_LOGI(TAG, "Sample %d (%d bytes): %.100s", i+1, len, buffer);
         } else {
-            ESP_LOGI(TAG, "Read %d: No data", i);
+            ESP_LOGI(TAG, "Sample %d: No data", i+1);
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-void manual_gps_test(void) {
-    ESP_LOGI("MANUAL_TEST", "=== Manual GPS Test ===");
-    
-    // Test 1: Check if UART is receiving any data
-    ESP_LOGI("MANUAL_TEST", "Test 1: Raw UART data check");
-    char buffer[256];
-    for (int i = 0; i < 5; i++) {
-        int len = uart_read_bytes(GPS_UART_NUM, (uint8_t*)buffer, 
-                                 sizeof(buffer)-1, pdMS_TO_TICKS(2000));
-        if (len > 0) {
-            buffer[len] = '\0';
-            ESP_LOGI("MANUAL_TEST", "Received %d bytes: %s", len, buffer);
-        } else {
-            ESP_LOGE("MANUAL_TEST", "No data received (attempt %d)", i+1);
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-    
-    // Test 2: GPS parsing test
-    ESP_LOGI("MANUAL_TEST", "Test 2: GPS data parsing");
-    gps_data_t gps_data;
-    for (int i = 0; i < 10; i++) {
-        esp_err_t err = gps_read(&gps_data);
-        if (err == ESP_OK) {
-            ESP_LOGI("MANUAL_TEST", "GPS read OK - Fix: %s, Sats: %d", 
-                    gps_data.valid_fix ? "YES" : "NO", gps_data.satellites);
-            if (gps_data.valid_fix) {
-                ESP_LOGI("MANUAL_TEST", "Position: %.6f, %.6f", 
-                        gps_data.latitude, gps_data.longitude);
-                break; // Success!
-            }
-        } else {
-            ESP_LOGW("MANUAL_TEST", "GPS read failed: %s", esp_err_to_name(err));
-        }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(500)); // Short delay between debug samples
     }
 }

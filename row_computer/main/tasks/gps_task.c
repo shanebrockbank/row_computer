@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "tasks/tasks_common.h"
+#include "config/common_constants.h"
 #include "sensors/gps.h"
 #include "sensors/sensors_common.h"
 
@@ -17,7 +18,7 @@ void gps_task(void *parameters) {
     
     // Add a startup delay to let GPS module settle
     ESP_LOGI(TAG, "Waiting for GPS module to initialize...");
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(GPS_STARTUP_DELAY_MS));
     
     // Optional: Run a communication test
     if (gps_test_communication() == ESP_OK) {
@@ -38,13 +39,13 @@ void gps_task(void *parameters) {
             gps_data.timestamp_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
             
             // Send to queue
-            if (xQueueSend(gps_data_queue, &gps_data, pdMS_TO_TICKS(100)) != pdTRUE) {
+            if (xQueueSend(gps_data_queue, &gps_data, pdMS_TO_TICKS(TIMEOUT_QUEUE_MS)) != pdTRUE) {
                 ESP_LOGW(TAG, "Failed to send GPS data to queue");
             }
-            
+
             // Log GPS status periodically
             static int gps_log_counter = 0;
-            if (++gps_log_counter >= 10) { // Every 10 successful reads
+            if (++gps_log_counter >= GPS_LOG_INTERVAL) { // Every N successful reads
                 if (gps_data.valid_fix) {
                     ESP_LOGI(TAG, "✓ Fix: %.6f°, %.6f° | Speed: %.1f kts | Sats: %d | Success rate: %lu%%",
                             gps_data.latitude, gps_data.longitude, 
@@ -74,7 +75,7 @@ void gps_task(void *parameters) {
             }
         }
         
-        // 1Hz update rate (GPS typically outputs at 1Hz anyway)
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // Standard GPS update rate
+        vTaskDelay(pdMS_TO_TICKS(GPS_TASK_PERIOD_MS));
     }
 }

@@ -1,8 +1,7 @@
 idf_component_register(
     SRCS 
         "main.c" 
-        "sensors/accel.c" 
-        "sensors/gyro.c" 
+        "sensors/mpu6050.c"
         "sensors/mag.c"
         "sensors/gps.c"
         "sensors/sensors_common.c"

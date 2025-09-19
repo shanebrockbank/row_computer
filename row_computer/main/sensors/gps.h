@@ -19,12 +19,10 @@ typedef struct {
 // Main GPS functions
 esp_err_t gps_init(void);
 esp_err_t gps_read(gps_data_t *gps_data);
-void print_gps_data(void);
 
-// Debug/test functions
+// Debug functions
 esp_err_t gps_test_communication(void);
 void gps_debug_raw_data(void);
-void manual_gps_test(void);
 
 // Internal functions (can be used for testing)
 esp_err_t gps_uart_init(void);

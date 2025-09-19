@@ -5,6 +5,7 @@
 #include <math.h>
 #include "tasks/tasks_common.h"
 #include "config/pin_definitions.h"
+#include "config/common_constants.h"
 #include "sensors_common.h"
 
 // Data processing and logging task
@@ -29,8 +30,8 @@ void logging_task(void *parameters) {
                                        imu_data.accel_z * imu_data.accel_z);
             
             // Detect potential stroke (high acceleration event)
-            if (accel_magnitude > 2.0f) { // 2g threshold
-                ESP_LOGI("LOG_TASK", "Stroke detected: %.2fg at %lu ms", 
+            if (accel_magnitude > STROKE_DETECTION_THRESHOLD) {
+                ESP_LOGI("LOG_TASK", "Stroke detected: %.2fg at %lu ms",
                         accel_magnitude, imu_data.timestamp_ms);
             }
         }
@@ -46,6 +47,6 @@ void logging_task(void *parameters) {
         }
         
         // Run at moderate frequency to process queued data
-        vTaskDelay(pdMS_TO_TICKS(50)); // 20Hz processing
+        vTaskDelay(pdMS_TO_TICKS(LOG_TASK_PERIOD_MS));
     }
 }
