@@ -10,8 +10,9 @@ static const char *TAG = "GPS_TASK";
 
 void gps_task(void *parameters) {
     ESP_LOGI(TAG, "Starting GPS task");
-    
+
     gps_data_t gps_data;
+    gps_health_t gps_health;
     uint32_t consecutive_failures = 0;
     uint32_t total_reads = 0;
     uint32_t successful_reads = 0;
@@ -43,17 +44,23 @@ void gps_task(void *parameters) {
                 ESP_LOGW(TAG, "Failed to send GPS data to queue");
             }
 
-            // Log GPS status periodically
+            // Log GPS status periodically with health data
             static int gps_log_counter = 0;
             if (++gps_log_counter >= GPS_LOG_INTERVAL) { // Every N successful reads
+                // Read health data for debug output
+                gps_read_health(&gps_health);
+
                 if (gps_data.valid_fix) {
-                    ESP_LOGI(TAG, "✓ Fix: %.6f°, %.6f° | Speed: %.1f kts | Sats: %d | Success rate: %lu%%",
-                            gps_data.latitude, gps_data.longitude, 
+                    ESP_LOGI(TAG, "✓ Fix: %.6f°, %.6f° | Speed: %.1f kts | Sats: %d | Health: hAcc=%lumm sAcc=%lumm/s fix=%d | Success: %lu%%",
+                            gps_data.latitude, gps_data.longitude,
                             gps_data.speed_knots, gps_data.satellites,
+                            gps_health.horizontal_accuracy, gps_health.speed_accuracy, gps_health.fix_type,
                             (successful_reads * 100) / total_reads);
                 } else {
-                    ESP_LOGI(TAG, "⚠ No fix | Sats: %d | Success rate: %lu%%", 
-                            gps_data.satellites, (successful_reads * 100) / total_reads);
+                    ESP_LOGI(TAG, "⚠ No fix | Sats: %d | Health: hAcc=%lumm sAcc=%lumm/s fix=%d | Success: %lu%%",
+                            gps_data.satellites,
+                            gps_health.horizontal_accuracy, gps_health.speed_accuracy, gps_health.fix_type,
+                            (successful_reads * 100) / total_reads);
                 }
                 gps_log_counter = 0;
             }
