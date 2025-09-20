@@ -15,7 +15,7 @@ esp_err_t mpu6050_init(void) {
         return ESP_OK;
     }
 
-    ESP_LOGI(TAG, "Initializing MPU6050 (accelerometer + gyroscope)");
+    ESP_LOGD(TAG, "Initializing MPU6050 (accelerometer + gyroscope)");
 
     // Wake up the sensor
     esp_err_t err = mpu6050_write_byte(MPU6050_PWR_MGMT_1, 0x00);
@@ -31,7 +31,7 @@ esp_err_t mpu6050_init(void) {
     uint8_t who_am_i;
     err = mpu6050_read_bytes(0x75, &who_am_i, 1); // WHO_AM_I register
     if (err == ESP_OK && who_am_i == 0x68) {
-        ESP_LOGI(TAG, "MPU6050 initialized successfully (WHO_AM_I: 0x%02X)", who_am_i);
+        ESP_LOGD(TAG, "MPU6050 initialized successfully (WHO_AM_I: 0x%02X)", who_am_i);
         mpu6050_initialized = true;
         return ESP_OK;
     } else {

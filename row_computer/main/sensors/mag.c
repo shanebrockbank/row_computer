@@ -30,7 +30,7 @@ esp_err_t mag_init(void)
         return err;
     }
     
-    ESP_LOGI(TAG, "Magnetometer initialized successfully");
+    ESP_LOGD(TAG, "Magnetometer initialized successfully");
     return ESP_OK;
 }
 

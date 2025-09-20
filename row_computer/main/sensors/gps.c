@@ -129,7 +129,7 @@ static void parse_ubx_nav_pvt(const uint8_t* payload) {
 
 // Initialize UART specifically for GPS
 esp_err_t gps_uart_init(void) {
-    ESP_LOGI(TAG, "Initializing GPS UART...");
+    ESP_LOGD(TAG, "Initializing GPS UART...");
     
     const uart_config_t uart_config = {
         .baud_rate = GPS_UART_BAUD_RATE,
@@ -160,7 +160,7 @@ esp_err_t gps_uart_init(void) {
         return err;
     }
     
-    ESP_LOGI(TAG, "GPS UART initialized successfully");
+    ESP_LOGD(TAG, "GPS UART initialized successfully");
     return ESP_OK;
 }
 
@@ -256,7 +256,7 @@ esp_err_t gps_configure_module(void) {
 }
 
 esp_err_t gps_init(void) {
-    ESP_LOGI(TAG, "Initializing GPS module...");
+    ESP_LOGD(TAG, "Initializing GPS module...");
     
     // Initialize UART for GPS
     esp_err_t err = gps_uart_init();

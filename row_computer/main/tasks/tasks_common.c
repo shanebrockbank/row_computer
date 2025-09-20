@@ -7,6 +7,7 @@
 #include "config/common_constants.h"
 #include "sensors_common.h"
 #include "utils/error_utils.h"
+#include "utils/boot_progress.h"
 
 static const char *TAG = "TASKS_COMMON";
 
@@ -15,11 +16,21 @@ esp_err_t create_inter_task_comm(void){
     imu_data_queue = xQueueCreate(IMU_QUEUE_SIZE, sizeof(imu_data_t));
     gps_data_queue = xQueueCreate(GPS_QUEUE_SIZE, sizeof(gps_data_t));
 
-    if (imu_data_queue == NULL || gps_data_queue == NULL) {
-        ESP_LOGE(TAG, "Failed to create communication queues");
+    if (imu_data_queue == NULL) {
+        boot_progress_failure(BOOT_QUEUES, "IMU queue", "Creation failed");
         return ESP_FAIL;
+    } else {
+        boot_progress_success(BOOT_QUEUES, "IMU queue");
     }
-    ESP_LOGI(TAG, "Communication queues created (IMU:%d, GPS:%d)", IMU_QUEUE_SIZE, GPS_QUEUE_SIZE);
+
+    if (gps_data_queue == NULL) {
+        boot_progress_failure(BOOT_QUEUES, "GPS queue", "Creation failed");
+        return ESP_FAIL;
+    } else {
+        boot_progress_success(BOOT_QUEUES, "GPS queue");
+    }
+
+    boot_progress_report_category(BOOT_QUEUES, "QUEUES");
     return ESP_OK;
 }
 
@@ -36,7 +47,12 @@ esp_err_t create_tasks(void){
         &imu_task_handle,
         1                   // Pin to core 1 (app core)
     );
-    CHECK_AND_LOG_ERROR(result != pdPASS ? ESP_FAIL : ESP_OK, TAG, "Failed to create IMU task");
+    if (result != pdPASS) {
+        boot_progress_failure(BOOT_TASKS, "IMU task", "Creation failed");
+        return ESP_FAIL;
+    } else {
+        boot_progress_success(BOOT_TASKS, "IMU task");
+    }
 
     result = xTaskCreatePinnedToCore(
         gps_task,
@@ -47,7 +63,12 @@ esp_err_t create_tasks(void){
         &gps_task_handle,
         1                   // Pin to core 1
     );
-    CHECK_AND_LOG_ERROR(result != pdPASS ? ESP_FAIL : ESP_OK, TAG, "Failed to create GPS task");
+    if (result != pdPASS) {
+        boot_progress_failure(BOOT_TASKS, "GPS task", "Creation failed");
+        return ESP_FAIL;
+    } else {
+        boot_progress_success(BOOT_TASKS, "GPS task");
+    }
 
     result = xTaskCreatePinnedToCore(
         logging_task,
@@ -58,9 +79,13 @@ esp_err_t create_tasks(void){
         &logging_task_handle,
         0                   // Pin to core 0 (protocol core)
     );
-    CHECK_AND_LOG_ERROR(result != pdPASS ? ESP_FAIL : ESP_OK, TAG, "Failed to create logging task");
+    if (result != pdPASS) {
+        boot_progress_failure(BOOT_TASKS, "LOG task", "Creation failed");
+        return ESP_FAIL;
+    } else {
+        boot_progress_success(BOOT_TASKS, "LOG task");
+    }
 
-    ESP_LOGI(TAG, "All tasks created and running");
-    ESP_LOGI(TAG, "=== System Ready for Rowing ===");
+    boot_progress_report_category(BOOT_TASKS, "TASKS");
     return ESP_OK;
 }

@@ -9,17 +9,34 @@
 
 // High-frequency IMU task - combines all motion sensors
 void imu_task(void *parameters) {
-    ESP_LOGI("IMU_TASK", "Starting IMU task at %dHz", 1000/IMU_TASK_PERIOD_MS);
+    ESP_LOGD("IMU_TASK", "Starting IMU task at %dHz", 1000/IMU_TASK_PERIOD_MS);
 
     imu_data_t imu_data;
     mpu6050_data_t mpu_data;
     TickType_t last_wake_time = xTaskGetTickCount();
     static uint32_t health_counter = 0;
 
+    // Health tracking counters
+    static uint32_t mpu_total_reads = 0;
+    static uint32_t mpu_successful_reads = 0;
+    static uint32_t mag_total_reads = 0;
+    static uint32_t mag_successful_reads = 0;
+
     while (1) {
         // Read MPU6050 data (accelerometer + gyroscope) in one efficient operation
         esp_err_t mpu_err = mpu6050_read_all(&mpu_data);
         esp_err_t mag_err = mag_read(&imu_data.mag_x, &imu_data.mag_y, &imu_data.mag_z);
+
+        // Update health tracking counters
+        mpu_total_reads++;
+        if (mpu_err == ESP_OK) {
+            mpu_successful_reads++;
+        }
+
+        mag_total_reads++;
+        if (mag_err == ESP_OK) {
+            mag_successful_reads++;
+        }
 
         // Copy MPU6050 data to IMU structure
         if (mpu_err == ESP_OK) {
@@ -41,9 +58,12 @@ void imu_task(void *parameters) {
 
         // Log sensor health periodically
         if (++health_counter >= SENSOR_HEALTH_LOG_INTERVAL) {
-            ESP_LOGI("IMU_TASK", "Sensor health - MPU6050:%s Mag:%s",
-                    (mpu_err == ESP_OK) ? "OK" : "FAIL",
-                    (mag_err == ESP_OK) ? "OK" : "FAIL");
+            uint32_t mpu_success_rate = mpu_total_reads > 0 ? (mpu_successful_reads * 100) / mpu_total_reads : 0;
+            uint32_t mag_success_rate = mag_total_reads > 0 ? (mag_successful_reads * 100) / mag_total_reads : 0;
+
+            ESP_LOGI("IMU_TASK", "IMU Health - MPU6050: %lu%% (%s) | Mag: %lu%% (%s)",
+                    mpu_success_rate, (mpu_err == ESP_OK) ? "OK" : "FAIL",
+                    mag_success_rate, (mag_err == ESP_OK) ? "OK" : "FAIL");
             health_counter = 0;
         }
 

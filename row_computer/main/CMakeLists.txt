@@ -1,16 +1,17 @@
 idf_component_register(
-    SRCS 
-        "main.c" 
+    SRCS
+        "main.c"
         "sensors/mpu6050.c"
         "sensors/mag.c"
         "sensors/gps.c"
         "sensors/sensors_common.c"
         "utils/protocol_init.c"
+        "utils/boot_progress.c"
         "tasks/tasks_common.c"
         "tasks/sensor_task.c"
         "tasks/gps_task.c"
         "tasks/logging_task.c"
-    INCLUDE_DIRS 
+    INCLUDE_DIRS
         "."
         "sensors"
         "config"

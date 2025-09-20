@@ -10,7 +10,7 @@
 
 // Data processing and logging task
 void logging_task(void *parameters) {
-    ESP_LOGI("LOG_TASK", "Starting logging task");
+    ESP_LOGD("LOG_TASK", "Starting logging task");
     
     imu_data_t imu_data;
     gps_data_t gps_data;
@@ -20,7 +20,7 @@ void logging_task(void *parameters) {
         while (xQueueReceive(imu_data_queue, &imu_data, 0) == pdTRUE) {
             // Here you would:
             // 1. Apply filtering/calibration
-            // 2. Detect rowing strokes
+            // 2. Detect rowing strokes (to come later after more data)
             // 3. Calculate boat motion metrics
             // 4. Log to SD card
             

@@ -9,7 +9,7 @@
 static const char *TAG = "GPS_TASK";
 
 void gps_task(void *parameters) {
-    ESP_LOGI(TAG, "Starting GPS task");
+    ESP_LOGD(TAG, "Starting GPS task");
 
     gps_data_t gps_data;
     gps_health_t gps_health;
@@ -18,14 +18,14 @@ void gps_task(void *parameters) {
     uint32_t successful_reads = 0;
     
     // Add a startup delay to let GPS module settle
-    ESP_LOGI(TAG, "Waiting for GPS module to initialize...");
+    ESP_LOGD(TAG, "Waiting for GPS module to initialize...");
     vTaskDelay(pdMS_TO_TICKS(GPS_STARTUP_DELAY_MS));
-    
+
     // Optional: Run a communication test
     if (gps_test_communication() == ESP_OK) {
-        ESP_LOGI(TAG, "GPS communication verified");
+        ESP_LOGD(TAG, "GPS communication verified");
     } else {
-        ESP_LOGI(TAG, "GPS communication test failed - will continue trying");
+        ESP_LOGD(TAG, "GPS communication test failed - will continue trying");
     }
     
     while (1) {
@@ -50,17 +50,15 @@ void gps_task(void *parameters) {
                 // Read health data for debug output
                 gps_read_health(&gps_health);
 
+                uint32_t success_rate = total_reads > 0 ? (successful_reads * 100) / total_reads : 0;
+
                 if (gps_data.valid_fix) {
-                    ESP_LOGI(TAG, "✓ Fix: %.6f°, %.6f° | Speed: %.1f kts | Sats: %d | Health: hAcc=%lumm sAcc=%lumm/s fix=%d | Success: %lu%%",
-                            gps_data.latitude, gps_data.longitude,
-                            gps_data.speed_knots, gps_data.satellites,
-                            gps_health.horizontal_accuracy, gps_health.speed_accuracy, gps_health.fix_type,
-                            (successful_reads * 100) / total_reads);
+                    ESP_LOGI(TAG, "GPS Health - Fix: %lu%% | Sats: %d | Status: GOOD FIX | Pos: %.6f°, %.6f° | Speed: %.1f kts",
+                            success_rate, gps_data.satellites,
+                            gps_data.latitude, gps_data.longitude, gps_data.speed_knots);
                 } else {
-                    ESP_LOGI(TAG, "⚠ No fix | Sats: %d | Health: hAcc=%lumm sAcc=%lumm/s fix=%d | Success: %lu%%",
-                            gps_data.satellites,
-                            gps_health.horizontal_accuracy, gps_health.speed_accuracy, gps_health.fix_type,
-                            (successful_reads * 100) / total_reads);
+                    ESP_LOGI(TAG, "GPS Health - Fix: %lu%% | Sats: %d | Status: NO FIX",
+                            success_rate, gps_data.satellites);
                 }
                 gps_log_counter = 0;
             }
