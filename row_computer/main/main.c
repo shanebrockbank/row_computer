@@ -18,10 +18,20 @@ static const char *TAG = "MAIN";
 // Define the global variables that are declared extern in tasks_common.h
 TaskHandle_t imu_task_handle = NULL;
 TaskHandle_t gps_task_handle = NULL;
-TaskHandle_t logging_task_handle = NULL;
+TaskHandle_t processing_task_handle = NULL;
+
+// New ultra-responsive task handles
+TaskHandle_t calibration_filter_task_handle = NULL;
+TaskHandle_t motion_fusion_task_handle = NULL;
+TaskHandle_t display_task_handle = NULL;
 
 QueueHandle_t imu_data_queue = NULL;
 QueueHandle_t gps_data_queue = NULL;
+
+// New ultra-responsive queue handles
+QueueHandle_t raw_imu_data_queue = NULL;
+QueueHandle_t processed_imu_data_queue = NULL;
+QueueHandle_t motion_state_queue = NULL;
 
 void app_main(void) {
     ESP_LOGI(TAG, "=== Rowing Computer Starting ===");
@@ -33,7 +43,7 @@ void app_main(void) {
     // Reduce verbosity on subsystems to only show warnings/errors by default
     esp_log_level_set("GPS", ESP_LOG_WARN);
     esp_log_level_set("PROTOCOLS", ESP_LOG_WARN);
-    esp_log_level_set("MPU6050", ESP_LOG_WARN);
+    esp_log_level_set("MPU6050", ESP_LOG_INFO);  // 🔍 ENABLE MPU6050 DEBUGGING
     esp_log_level_set("MAG", ESP_LOG_WARN);
     esp_log_level_set("LOG_TASK", ESP_LOG_WARN);
 
@@ -54,10 +64,14 @@ void app_main(void) {
     }
 
     // Initialize sensors
-    ESP_LOGD(TAG, "Initializing sensors...");
-    if (mpu6050_init() != ESP_OK) {
+    ESP_LOGI(TAG, "=== SENSOR INITIALIZATION PHASE ===");
+    ESP_LOGI(TAG, "Initializing MPU6050 (accelerometer + gyroscope)...");
+    esp_err_t mpu_result = mpu6050_init();
+    if (mpu_result != ESP_OK) {
+        ESP_LOGE(TAG, "❌ MPU6050 initialization failed: %s", esp_err_to_name(mpu_result));
         boot_progress_failure(BOOT_SENSORS, "MPU6050", "Init failed");
     } else {
+        ESP_LOGI(TAG, "✅ MPU6050 initialization successful");
         boot_progress_success(BOOT_SENSORS, "MPU6050");
     }
 
@@ -99,7 +113,7 @@ void app_main(void) {
     // Main task becomes system monitor
     while (1) {
         // Monitor system health
-        //ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
+        ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
         vTaskDelay(pdMS_TO_TICKS(5000)); // Report every 5 seconds
     }
 }

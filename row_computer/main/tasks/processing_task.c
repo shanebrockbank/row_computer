@@ -8,8 +8,8 @@
 #include "config/common_constants.h"
 #include "sensors_common.h"
 
-// Data processing and logging task
-void logging_task(void *parameters) {
+// Legacy data processing task (to be replaced by specialized tasks)
+void processing_task(void *parameters) {
     ESP_LOGD("LOG_TASK", "Starting logging task");
     
     imu_data_t imu_data;

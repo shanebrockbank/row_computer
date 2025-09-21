@@ -1,0 +1,101 @@
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "tasks/tasks_common.h"
+#include "config/common_constants.h"
+#include "sensors/sensors_common.h"
+#include "utils/timing_utils.h"
+
+static const char *TAG = "CALIBRATION_TASK";
+
+void calibration_filter_task(void *parameters) {
+    ESP_LOGI(TAG, "Starting calibration filter task at %dHz", 1000/CALIBRATION_TASK_PERIOD_MS);
+
+    imu_data_t raw_imu_data;
+    processed_imu_data_t processed_imu_data;
+    TickType_t last_wake_time = xTaskGetTickCount();
+
+    // Calibration and filtering state variables
+    static uint32_t sample_count = 0;
+    static uint32_t processed_samples = 0;
+    static uint32_t dropped_samples = 0;
+
+    // Timing measurement
+    static timing_stats_t processing_stats;
+    static bool timing_initialized = false;
+    if (!timing_initialized) {
+        timing_stats_init(&processing_stats);
+        timing_initialized = true;
+    }
+
+    while (1) {
+        // Read from raw IMU queue (non-blocking)
+        if (xQueueReceive(raw_imu_data_queue, &raw_imu_data, 0) == pdTRUE) {
+            sample_count++;
+            uint32_t processing_start = get_timestamp_ms();
+
+            // TODO: Implement calibration and filtering algorithms
+            // For now, pass through data with basic structure conversion
+            processed_imu_data.timestamp_ms = raw_imu_data.timestamp_ms;
+            processed_imu_data.accel_x = raw_imu_data.accel_x;
+            processed_imu_data.accel_y = raw_imu_data.accel_y;
+            processed_imu_data.accel_z = raw_imu_data.accel_z;
+            processed_imu_data.gyro_x = raw_imu_data.gyro_x;
+            processed_imu_data.gyro_y = raw_imu_data.gyro_y;
+            processed_imu_data.gyro_z = raw_imu_data.gyro_z;
+            processed_imu_data.mag_x = raw_imu_data.mag_x;
+            processed_imu_data.mag_y = raw_imu_data.mag_y;
+            processed_imu_data.mag_z = raw_imu_data.mag_z;
+
+            // Debug logging - temporary to trace calibration processing
+            static int calib_debug_counter = 0;
+            if (++calib_debug_counter % 100 == 0) { // Log every 100 samples
+                ESP_LOGI(TAG, "CALIBRATION: AX=%.3f AY=%.3f AZ=%.3f | GX=%.2f GY=%.2f GZ=%.2f",
+                        processed_imu_data.accel_x, processed_imu_data.accel_y, processed_imu_data.accel_z,
+                        processed_imu_data.gyro_x, processed_imu_data.gyro_y, processed_imu_data.gyro_z);
+            }
+
+            // Send to processed IMU queue with smart overflow management
+            if (xQueueSend(processed_imu_data_queue, &processed_imu_data, 0) == pdTRUE) {
+                processed_samples++;
+            } else {
+                // Queue full - drop oldest processed sample and insert newest for ultra-responsiveness
+                processed_imu_data_t discarded_data;
+                if (xQueueReceive(processed_imu_data_queue, &discarded_data, 0) == pdTRUE) {
+                    // Successfully removed oldest, now add newest
+                    if (xQueueSend(processed_imu_data_queue, &processed_imu_data, 0) == pdTRUE) {
+                        processed_samples++;
+                        ESP_LOGW(TAG, "Processed IMU queue full - dropped sample from %lu ms, kept %lu ms",
+                                discarded_data.timestamp_ms, processed_imu_data.timestamp_ms);
+                    } else {
+                        dropped_samples++;
+                        ESP_LOGE(TAG, "Failed to add to processed IMU queue after clearing space");
+                    }
+                } else {
+                    dropped_samples++;
+                    ESP_LOGE(TAG, "Processed IMU queue full but couldn't remove oldest sample");
+                }
+            }
+
+            // Measure processing time
+            uint32_t processing_end = get_timestamp_ms();
+            uint32_t processing_time = calc_elapsed_ms(processing_start, processing_end);
+            timing_stats_update(&processing_stats, processing_time);
+        }
+
+        // Generate timing reports and health statistics periodically
+        timing_stats_report(&processing_stats, "CALIBRATION", 10000);  // Every 10 seconds
+
+        static uint32_t health_counter = 0;
+        if (++health_counter >= SENSOR_HEALTH_LOG_INTERVAL) {
+            ESP_LOGI(TAG, "Calibration Health - Processed: %lu | Dropped: %lu | Rate: %.1f%%",
+                    processed_samples, dropped_samples,
+                    sample_count > 0 ? (float)processed_samples * 100.0f / sample_count : 0.0f);
+            health_counter = 0;
+        }
+
+        // Maintain precise 100Hz timing
+        vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(CALIBRATION_TASK_PERIOD_MS));
+    }
+}
