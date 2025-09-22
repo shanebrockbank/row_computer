@@ -1,5 +1,6 @@
 #include "timing_utils.h"
 #include "esp_log.h"
+#include "config/common_constants.h"
 #include <string.h>
 
 static const char *TAG = "TIMING";
@@ -21,7 +22,7 @@ void timing_stats_update(timing_stats_t *stats, uint32_t latency_us) {
         stats->min_latency_us = latency_us;
     }
 
-    if (latency_us > 50000) { // 50ms in microseconds
+    if (latency_us > LATENCY_WARNING_THRESHOLD_US) { // 50ms in microseconds
         stats->samples_over_50ms++;
     }
 
@@ -37,15 +38,15 @@ void timing_stats_update(timing_stats_t *stats, uint32_t latency_us) {
 bool timing_stats_report(timing_stats_t *stats, const char *task_name, uint32_t report_interval_ms) {
     uint64_t current_time_us = get_timestamp_us();
     uint64_t elapsed_since_report_us = current_time_us - stats->last_report_time_us;
-    uint32_t elapsed_since_report_ms = (uint32_t)(elapsed_since_report_us / 1000);
+    uint32_t elapsed_since_report_ms = (uint32_t)(elapsed_since_report_us / MS_TO_US_MULTIPLIER);
 
     if (elapsed_since_report_ms >= report_interval_ms && stats->total_samples > 0) {
-        float success_rate = ((float)(stats->total_samples - stats->samples_over_50ms) / stats->total_samples) * 100.0f;
+        float success_rate = ((float)(stats->total_samples - stats->samples_over_50ms) / stats->total_samples) * PERCENTAGE_CALCULATION_FACTOR;
 
         // Convert microseconds to milliseconds for display, with decimal precision
-        float avg_ms = stats->avg_latency_us / 1000.0f;
-        float max_ms = stats->max_latency_us / 1000.0f;
-        float min_ms = stats->min_latency_us / 1000.0f;
+        float avg_ms = stats->avg_latency_us / (float)MS_TO_US_MULTIPLIER;
+        float max_ms = stats->max_latency_us / (float)MS_TO_US_MULTIPLIER;
+        float min_ms = stats->min_latency_us / (float)MS_TO_US_MULTIPLIER;
 
         ESP_LOGI(TAG, "%s Latency - Avg: %.1fms | Max: %.1fms | Min: %.1fms | >50ms: %lu/%lu (%.1f%% success)",
                 task_name, avg_ms, max_ms, min_ms,

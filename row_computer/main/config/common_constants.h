@@ -15,7 +15,7 @@
 
 // New ultra-responsive task periods
 #define CALIBRATION_TASK_PERIOD_MS  10      // 100Hz - matches IMU rate
-#define MOTION_FUSION_PERIOD_MS     20      // 50Hz - high-frequency fusion
+#define MOTION_FUSION_PERIOD_MS     10      // 100Hz - matches IMU rate for consistent latency
 #define DISPLAY_TASK_PERIOD_MS      100     // 10Hz - smooth UI updates
 #define SD_LOGGING_PERIOD_MS        1000    // 1Hz - efficient batch logging
 
@@ -48,7 +48,7 @@
 // Ultra-responsive queue configurations (<200ms total latency)
 #define RAW_IMU_QUEUE_SIZE          15      // 0.15s buffer at 100Hz (IMU → Calibration)
 #define PROCESSED_IMU_QUEUE_SIZE    10      // 0.1s buffer at 100Hz (Calibration → Fusion)
-#define MOTION_STATE_QUEUE_SIZE     30      // 0.6s buffer at 50Hz (Fusion → Display/Logging)
+#define MOTION_STATE_QUEUE_SIZE     30      // 0.3s buffer at 100Hz (Fusion → Display/Logging)
 #define GPS_DATA_QUEUE_SIZE         3       // 3s buffer at 1Hz (GPS → Fusion)
 
 // Sensor thresholds and constants
@@ -63,5 +63,24 @@
 #define SENSOR_STABILIZE_DELAY_MS   100     // Sensor stabilization delay
 #define I2C_SCAN_TIMEOUT_MS         50      // I2C device scan timeout
 #define GPS_COMMUNICATION_TEST_TIMEOUT_MS  2000  // GPS communication test timeout
+
+// System monitoring and reporting intervals
+#define SYSTEM_MONITOR_REPORT_INTERVAL_MS   5000    // Main system health report interval
+#define TIMING_REPORT_INTERVAL_MS           5000    // Timing statistics report interval
+#define CALIBRATION_TIMING_CHECK_INTERVAL   30000   // Calibration timing check (30 seconds)
+
+// Performance and latency thresholds
+#define LATENCY_WARNING_THRESHOLD_US        50000   // 50ms latency warning threshold (microseconds)
+#define CALIBRATION_LATENCY_THRESHOLD_US    5000    // 5ms calibration processing threshold
+#define MS_TO_US_MULTIPLIER                 1000    // Milliseconds to microseconds conversion
+
+// Data processing constants
+#define PERCENTAGE_CALCULATION_FACTOR       100     // For percentage calculations
+#define CALIBRATION_TEST_DELAY_RANGE_US     10000   // Random test delay range (microseconds)
+#define CALIBRATION_TEST_DELAY_BASE_US      1000    // Random test delay base (microseconds)
+
+// Health monitoring thresholds
+#define HEALTH_SUCCESS_RATE_THRESHOLD       95      // Report if success rate drops below 95%
+#define HEALTH_MIN_OPERATIONS_TO_REPORT     10      // Minimum operations before reporting health
 
 #endif // COMMON_CONSTANTS_H

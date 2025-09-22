@@ -8,6 +8,8 @@
 #include "config/common_constants.h"
 #include "sensors/sensors_common.h"
 #include "utils/timing_utils.h"
+#include "utils/queue_utils.h"
+#include "utils/health_monitor.h"
 
 static const char *TAG = "CALIBRATION_TASK";
 
@@ -15,7 +17,7 @@ void calibration_filter_task(void *parameters) {
     ESP_LOGI(TAG, "Starting calibration filter task at %dHz", 1000/CALIBRATION_TASK_PERIOD_MS);
 
     imu_data_t raw_imu_data;
-    processed_imu_data_t processed_imu_data;
+    imu_data_t processed_imu_data;
     TickType_t last_wake_time = xTaskGetTickCount();
 
     // Calibration and filtering state variables
@@ -50,30 +52,14 @@ void calibration_filter_task(void *parameters) {
             processed_imu_data.mag_y = raw_imu_data.mag_y;
             processed_imu_data.mag_z = raw_imu_data.mag_z;
 
-            // // TIMING TEST: Add precise random delay (1-20ms) using microsecond precision
-            // uint32_t delay_us = (esp_random() % 10000) + 1000;  // 1-20ms in microseconds
-            // esp_rom_delay_us(delay_us);
 
             // Send to processed IMU queue with smart overflow management
-            if (xQueueSend(processed_imu_data_queue, &processed_imu_data, 0) == pdTRUE) {
+            if (queue_send_with_overflow(processed_imu_data_queue, &processed_imu_data, sizeof(imu_data_t), TAG, "Processed IMU", processed_imu_data.timestamp_ms) == ESP_OK) {
                 processed_samples++;
+                health_record_success(&g_system_health.calibration_task);
             } else {
-                // Queue full - drop oldest processed sample and insert newest for ultra-responsiveness
-                processed_imu_data_t discarded_data;
-                if (xQueueReceive(processed_imu_data_queue, &discarded_data, 0) == pdTRUE) {
-                    // Successfully removed oldest, now add newest
-                    if (xQueueSend(processed_imu_data_queue, &processed_imu_data, 0) == pdTRUE) {
-                        processed_samples++;
-                        ESP_LOGW(TAG, "Processed IMU queue full - dropped sample from %lu ms, kept %lu ms",
-                                discarded_data.timestamp_ms, processed_imu_data.timestamp_ms);
-                    } else {
-                        dropped_samples++;
-                        ESP_LOGE(TAG, "Failed to add to processed IMU queue after clearing space");
-                    }
-                } else {
-                    dropped_samples++;
-                    ESP_LOGE(TAG, "Processed IMU queue full but couldn't remove oldest sample");
-                }
+                dropped_samples++;
+                health_record_drop(&g_system_health.calibration_task);
             }
 
             // Measure processing time
@@ -84,22 +70,21 @@ void calibration_filter_task(void *parameters) {
 
         // Only report timing if there are performance issues
         static uint32_t timing_counter = 0;
-        if (++timing_counter >= 30000) { // Every 30 seconds
-            if (processing_stats.max_latency_us > 5000) { // Only if processing takes >5ms (5000us)
+        if (++timing_counter >= CALIBRATION_TIMING_CHECK_INTERVAL) { // Every 30 seconds
+            if (processing_stats.max_latency_us > CALIBRATION_LATENCY_THRESHOLD_US) { // Only if processing takes >5ms
                 timing_stats_report(&processing_stats, "CALIBRATION", 0);  // Force report
             }
             timing_counter = 0;
         }
 
         // Only log calibration health if there are dropped samples
-        static uint32_t health_counter = 0;
-        if (++health_counter >= (SENSOR_HEALTH_LOG_INTERVAL * 2)) {
+        if (health_should_report(&g_system_health.calibration_task, SENSOR_HEALTH_LOG_INTERVAL * 2)) {
+            health_report_component(&g_system_health.calibration_task, "CALIBRATION");
             if (dropped_samples > 0) {
                 ESP_LOGW(TAG, "Calibration Issues - Processed: %lu | Dropped: %lu | Rate: %.1f%%",
                         processed_samples, dropped_samples,
-                        sample_count > 0 ? (float)processed_samples * 100.0f / sample_count : 0.0f);
+                        sample_count > 0 ? (float)processed_samples * PERCENTAGE_CALCULATION_FACTOR / sample_count : 0.0f);
             }
-            health_counter = 0;
         }
 
         // Maintain precise 100Hz timing

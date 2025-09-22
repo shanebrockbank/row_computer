@@ -12,16 +12,8 @@ typedef struct {
     float mag_x, mag_y, mag_z;          // gauss
 } imu_data_t;
 
-// Processed IMU data after calibration and filtering
-typedef struct {
-    uint32_t timestamp_ms;
-    float accel_x, accel_y, accel_z;    // calibrated g-forces
-    float gyro_x, gyro_y, gyro_z;       // calibrated deg/s
-    float mag_x, mag_y, mag_z;          // calibrated gauss
-    // TODO: Add filtered/derived values like:
-    // float accel_magnitude;
-    // float attitude_roll, attitude_pitch, attitude_yaw;
-} processed_imu_data_t;
+// Note: processed_imu_data_t removed - use imu_data_t throughout pipeline
+// After calibration, data flows through same structure for memory efficiency
 
 // Fused motion state combining IMU and GPS data
 typedef struct {

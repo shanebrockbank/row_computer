@@ -7,13 +7,14 @@
 #include "sensors/sensors_common.h"
 #include "sensors/gps.h"
 #include <math.h>
+#include "utils/queue_utils.h"
 
 static const char *TAG = "MOTION_FUSION_TASK";
 
 void motion_fusion_task(void *parameters) {
     ESP_LOGI(TAG, "Starting motion fusion task at %dHz", 1000/MOTION_FUSION_PERIOD_MS);
 
-    processed_imu_data_t processed_imu;
+    imu_data_t processed_imu;
     gps_data_t gps_data;
     motion_state_t motion_state;
     TickType_t last_wake_time = xTaskGetTickCount();
@@ -82,11 +83,10 @@ void motion_fusion_task(void *parameters) {
 
 
             // Send to motion state queue (non-blocking)
-            if (xQueueSend(motion_state_queue, &motion_state, 0) == pdTRUE) {
+            if (queue_send_or_drop(motion_state_queue, &motion_state, TAG, "Motion state") == ESP_OK) {
                 motion_states_generated++;
             } else {
                 dropped_states++;
-                ESP_LOGW(TAG, "Motion state queue full - dropping state");
             }
         }
 
@@ -101,7 +101,7 @@ void motion_fusion_task(void *parameters) {
             health_counter = 0;
         }
 
-        // Maintain precise 50Hz timing
+        // Maintain precise 100Hz timing
         vTaskDelayUntil(&last_wake_time, pdMS_TO_TICKS(MOTION_FUSION_PERIOD_MS));
     }
 }

@@ -13,21 +13,13 @@ static const char *TAG = "TASKS_COMMON";
 
 // Create inter-task communication queues
 esp_err_t create_inter_task_comm(void){
-    // Legacy queues (kept for compatibility during transition)
-    imu_data_queue = xQueueCreate(IMU_QUEUE_SIZE, sizeof(imu_data_t));
-    gps_data_queue = xQueueCreate(GPS_DATA_QUEUE_SIZE, sizeof(gps_data_t));  // Updated to 3-buffer for ultra-responsive
+    // Core system queues
+    gps_data_queue = xQueueCreate(GPS_DATA_QUEUE_SIZE, sizeof(gps_data_t));
 
     // New ultra-responsive queues
     raw_imu_data_queue = xQueueCreate(RAW_IMU_QUEUE_SIZE, sizeof(imu_data_t));
-    processed_imu_data_queue = xQueueCreate(PROCESSED_IMU_QUEUE_SIZE, sizeof(processed_imu_data_t));
+    processed_imu_data_queue = xQueueCreate(PROCESSED_IMU_QUEUE_SIZE, sizeof(imu_data_t));
     motion_state_queue = xQueueCreate(MOTION_STATE_QUEUE_SIZE, sizeof(motion_state_t));
-
-    if (imu_data_queue == NULL) {
-        boot_progress_failure(BOOT_QUEUES, "IMU queue", "Creation failed");
-        return ESP_FAIL;
-    } else {
-        boot_progress_success(BOOT_QUEUES, "IMU queue");
-    }
 
     if (gps_data_queue == NULL) {
         boot_progress_failure(BOOT_QUEUES, "GPS queue", "Creation failed");
@@ -98,21 +90,6 @@ esp_err_t create_tasks(void){
         boot_progress_success(BOOT_TASKS, "GPS task");
     }
 
-    result = xTaskCreatePinnedToCore(
-        processing_task,
-        "LOG_TASK",
-        LOG_TASK_STACK_SIZE,
-        NULL,
-        LOG_TASK_PRIORITY,
-        &processing_task_handle,
-        0                   // Pin to core 0 (protocol core)
-    );
-    if (result != pdPASS) {
-        boot_progress_failure(BOOT_TASKS, "LOG task", "Creation failed");
-        return ESP_FAIL;
-    } else {
-        boot_progress_success(BOOT_TASKS, "LOG task");
-    }
 
     // Create new ultra-responsive processing tasks
     result = xTaskCreatePinnedToCore(

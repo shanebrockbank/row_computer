@@ -7,25 +7,25 @@
 #include "driver/i2c.h"
 #include "driver/spi_master.h"
 #include "config/pin_definitions.h"
+#include "config/common_constants.h"
 #include "sensors/sensors_common.h"
 #include "sensors/mpu6050.h"
 #include "tasks/tasks_common.h"
 #include "utils/protocol_init.h"
 #include "utils/boot_progress.h"
+#include "utils/health_monitor.h"
 
 static const char *TAG = "MAIN";
 
 // Define the global variables that are declared extern in tasks_common.h
 TaskHandle_t imu_task_handle = NULL;
 TaskHandle_t gps_task_handle = NULL;
-TaskHandle_t processing_task_handle = NULL;
 
 // New ultra-responsive task handles
 TaskHandle_t calibration_filter_task_handle = NULL;
 TaskHandle_t motion_fusion_task_handle = NULL;
 TaskHandle_t display_task_handle = NULL;
 
-QueueHandle_t imu_data_queue = NULL;
 QueueHandle_t gps_data_queue = NULL;
 
 // New ultra-responsive queue handles
@@ -38,6 +38,14 @@ void app_main(void) {
 
     // Initialize boot progress tracking
     boot_progress_init();
+
+    // Initialize unified health monitoring system
+    health_stats_init(&g_system_health.imu_sensor, "MPU6050");
+    health_stats_init(&g_system_health.mag_sensor, "HMC5883L");
+    health_stats_init(&g_system_health.gps_sensor, "GPS");
+    health_stats_init(&g_system_health.calibration_task, "Calibration");
+    health_stats_init(&g_system_health.motion_fusion_task, "Motion Fusion");
+    health_stats_init(&g_system_health.display_task, "Display");
 
     // Set log levels for condensed boot experience
     // Reduce verbosity on subsystems to only show warnings/errors by default
@@ -106,7 +114,6 @@ void app_main(void) {
     } else {
         boot_progress_failure(BOOT_SENSORS, "GPS comm test", "No response");
         // Run raw debug to see what's happening
-        //ESP_LOGD(TAG, "Running GPS raw data debug...");
         gps_debug_raw_data();
     }
 
@@ -125,7 +132,6 @@ void app_main(void) {
     // Main task becomes system monitor
     while (1) {
         // Monitor system health
-        //ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
-        vTaskDelay(pdMS_TO_TICKS(5000)); // Report every 5 seconds
+        vTaskDelay(pdMS_TO_TICKS(SYSTEM_MONITOR_REPORT_INTERVAL_MS)); // Report every 5 seconds
     }
 }
