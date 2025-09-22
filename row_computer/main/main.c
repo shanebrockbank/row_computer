@@ -64,15 +64,27 @@ void app_main(void) {
     }
 
     // Initialize sensors
-    ESP_LOGI(TAG, "=== SENSOR INITIALIZATION PHASE ===");
-    ESP_LOGI(TAG, "Initializing MPU6050 (accelerometer + gyroscope)...");
-    esp_err_t mpu_result = mpu6050_init();
-    if (mpu_result != ESP_OK) {
-        ESP_LOGE(TAG, "❌ MPU6050 initialization failed: %s", esp_err_to_name(mpu_result));
+    ESP_LOGD(TAG, "Initializing sensors...");
+    if (mpu6050_init() != ESP_OK) {
         boot_progress_failure(BOOT_SENSORS, "MPU6050", "Init failed");
     } else {
-        ESP_LOGI(TAG, "✅ MPU6050 initialization successful");
-        boot_progress_success(BOOT_SENSORS, "MPU6050");
+        // Quick validation test - read sensor data to verify it's working
+        mpu6050_data_t test_data;
+        if (mpu6050_read_all(&test_data) == ESP_OK) {
+            // Check if we get realistic values (not all zeros)
+            float total_accel = sqrt(test_data.accel_x * test_data.accel_x +
+                                   test_data.accel_y * test_data.accel_y +
+                                   test_data.accel_z * test_data.accel_z);
+            if (total_accel > 0.5f && total_accel < 2.0f) { // Reasonable range for gravity ±noise
+                boot_progress_success(BOOT_SENSORS, "MPU6050");
+                ESP_LOGD(TAG, "MPU6050 data validation: %.2fg total acceleration", total_accel);
+            } else {
+                boot_progress_failure(BOOT_SENSORS, "MPU6050", "Invalid data");
+                ESP_LOGW(TAG, "MPU6050 reads unusual values: %.2fg total acceleration", total_accel);
+            }
+        } else {
+            boot_progress_failure(BOOT_SENSORS, "MPU6050", "Read test failed");
+        }
     }
 
     if (mag_init() != ESP_OK) {
@@ -94,7 +106,7 @@ void app_main(void) {
     } else {
         boot_progress_failure(BOOT_SENSORS, "GPS comm test", "No response");
         // Run raw debug to see what's happening
-        ESP_LOGD(TAG, "Running GPS raw data debug...");
+        //ESP_LOGD(TAG, "Running GPS raw data debug...");
         gps_debug_raw_data();
     }
 
@@ -113,7 +125,7 @@ void app_main(void) {
     // Main task becomes system monitor
     while (1) {
         // Monitor system health
-        ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
+        //ESP_LOGI(TAG, "System running - Free heap: %lu bytes", esp_get_free_heap_size());
         vTaskDelay(pdMS_TO_TICKS(5000)); // Report every 5 seconds
     }
 }

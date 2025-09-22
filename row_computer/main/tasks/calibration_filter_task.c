@@ -1,4 +1,6 @@
 #include "esp_log.h"
+#include "esp_random.h"
+#include "esp_rom_gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -33,7 +35,7 @@ void calibration_filter_task(void *parameters) {
         // Read from raw IMU queue (non-blocking)
         if (xQueueReceive(raw_imu_data_queue, &raw_imu_data, 0) == pdTRUE) {
             sample_count++;
-            uint32_t processing_start = get_timestamp_ms();
+            uint64_t processing_start = get_timestamp_us();
 
             // TODO: Implement calibration and filtering algorithms
             // For now, pass through data with basic structure conversion
@@ -48,13 +50,9 @@ void calibration_filter_task(void *parameters) {
             processed_imu_data.mag_y = raw_imu_data.mag_y;
             processed_imu_data.mag_z = raw_imu_data.mag_z;
 
-            // Debug logging - temporary to trace calibration processing
-            static int calib_debug_counter = 0;
-            if (++calib_debug_counter % 100 == 0) { // Log every 100 samples
-                ESP_LOGI(TAG, "CALIBRATION: AX=%.3f AY=%.3f AZ=%.3f | GX=%.2f GY=%.2f GZ=%.2f",
-                        processed_imu_data.accel_x, processed_imu_data.accel_y, processed_imu_data.accel_z,
-                        processed_imu_data.gyro_x, processed_imu_data.gyro_y, processed_imu_data.gyro_z);
-            }
+            // // TIMING TEST: Add precise random delay (1-20ms) using microsecond precision
+            // uint32_t delay_us = (esp_random() % 10000) + 1000;  // 1-20ms in microseconds
+            // esp_rom_delay_us(delay_us);
 
             // Send to processed IMU queue with smart overflow management
             if (xQueueSend(processed_imu_data_queue, &processed_imu_data, 0) == pdTRUE) {
@@ -79,19 +77,28 @@ void calibration_filter_task(void *parameters) {
             }
 
             // Measure processing time
-            uint32_t processing_end = get_timestamp_ms();
-            uint32_t processing_time = calc_elapsed_ms(processing_start, processing_end);
+            uint64_t processing_end = get_timestamp_us();
+            uint32_t processing_time = calc_elapsed_us(processing_start, processing_end);
             timing_stats_update(&processing_stats, processing_time);
         }
 
-        // Generate timing reports and health statistics periodically
-        timing_stats_report(&processing_stats, "CALIBRATION", 10000);  // Every 10 seconds
+        // Only report timing if there are performance issues
+        static uint32_t timing_counter = 0;
+        if (++timing_counter >= 30000) { // Every 30 seconds
+            if (processing_stats.max_latency_us > 5000) { // Only if processing takes >5ms (5000us)
+                timing_stats_report(&processing_stats, "CALIBRATION", 0);  // Force report
+            }
+            timing_counter = 0;
+        }
 
+        // Only log calibration health if there are dropped samples
         static uint32_t health_counter = 0;
-        if (++health_counter >= SENSOR_HEALTH_LOG_INTERVAL) {
-            ESP_LOGI(TAG, "Calibration Health - Processed: %lu | Dropped: %lu | Rate: %.1f%%",
-                    processed_samples, dropped_samples,
-                    sample_count > 0 ? (float)processed_samples * 100.0f / sample_count : 0.0f);
+        if (++health_counter >= (SENSOR_HEALTH_LOG_INTERVAL * 2)) {
+            if (dropped_samples > 0) {
+                ESP_LOGW(TAG, "Calibration Issues - Processed: %lu | Dropped: %lu | Rate: %.1f%%",
+                        processed_samples, dropped_samples,
+                        sample_count > 0 ? (float)processed_samples * 100.0f / sample_count : 0.0f);
+            }
             health_counter = 0;
         }
 

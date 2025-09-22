@@ -80,14 +80,6 @@ void motion_fusion_task(void *parameters) {
                                        motion_state.accel_z * motion_state.accel_z);
             motion_state.total_acceleration = accel_magnitude;
 
-            // Debug logging - temporary to trace motion fusion
-            static int fusion_debug_counter = 0;
-            if (++fusion_debug_counter % 50 == 0) { // Log every 50 samples (once per second at 50Hz)
-                ESP_LOGI(TAG, "MOTION_FUSION: AX=%.3f AY=%.3f AZ=%.3f | GX=%.2f GY=%.2f GZ=%.2f | Total: %.3fg",
-                        motion_state.accel_x, motion_state.accel_y, motion_state.accel_z,
-                        motion_state.gyro_x, motion_state.gyro_y, motion_state.gyro_z,
-                        motion_state.total_acceleration);
-            }
 
             // Send to motion state queue (non-blocking)
             if (xQueueSend(motion_state_queue, &motion_state, 0) == pdTRUE) {
@@ -98,12 +90,14 @@ void motion_fusion_task(void *parameters) {
             }
         }
 
-        // Log fusion health periodically
+        // Only log fusion health if there are issues
         static uint32_t health_counter = 0;
-        if (++health_counter >= (SENSOR_HEALTH_LOG_INTERVAL / 5)) { // More frequent for fusion task
-            ESP_LOGI(TAG, "Fusion Health - IMU: %lu | GPS: %lu | States: %lu | Dropped: %lu | GPS: %s",
-                    imu_samples_processed, gps_updates_received, motion_states_generated, dropped_states,
-                    has_gps_reference ? "VALID" : "NO_FIX");
+        if (++health_counter >= (SENSOR_HEALTH_LOG_INTERVAL * 3)) { // Much less frequent
+            if (dropped_states > 0 || !has_gps_reference) {
+                ESP_LOGW(TAG, "Fusion Issues - States: %lu | Dropped: %lu | GPS: %s",
+                        motion_states_generated, dropped_states,
+                        has_gps_reference ? "VALID" : "NO_FIX");
+            }
             health_counter = 0;
         }
 

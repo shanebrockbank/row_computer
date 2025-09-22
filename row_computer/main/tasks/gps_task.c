@@ -53,12 +53,12 @@ void gps_task(void *parameters) {
                 uint32_t success_rate = total_reads > 0 ? (successful_reads * 100) / total_reads : 0;
 
                 if (gps_data.valid_fix) {
-                    ESP_LOGI(TAG, "GPS Health - Fix: %lu%% | Sats: %d | Status: GOOD FIX | Pos: %.6f°, %.6f° | Speed: %.1f kts",
-                            success_rate, gps_data.satellites,
-                            gps_data.latitude, gps_data.longitude, gps_data.speed_knots);
+                    ESP_LOGI(TAG, "Pos: %.6f°, %.6f° | Sats: %d | Accuracy: H=%.1f m | Speed: %.2f m/s | Heading: %.1f°",
+                            gps_data.latitude, gps_data.longitude, gps_data.satellites,
+                            gps_health.horizontal_accuracy / 1000.0f, gps_data.speed_knots * 0.514444f, gps_data.heading);
                 } else {
-                    ESP_LOGI(TAG, "GPS Health - Fix: %lu%% | Sats: %d | Status: NO FIX",
-                            success_rate, gps_data.satellites);
+                    ESP_LOGI(TAG, "GPS: NO FIX | Sats: %d | Success: %lu%%",
+                            gps_data.satellites, success_rate);
                 }
                 gps_log_counter = 0;
             }

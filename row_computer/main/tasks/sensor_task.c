@@ -23,21 +23,8 @@ void imu_task(void *parameters) {
     static uint32_t mag_successful_reads = 0;
 
     while (1) {
-        // Add explicit logging for first few iterations
-        static int task_iteration = 0;
-        task_iteration++;
-
-        if (task_iteration <= 3) {
-            ESP_LOGE("IMU_TASK", "🔍 SENSOR READ ATTEMPT #%d: About to call mpu6050_read_all()", task_iteration);
-        }
-
         // Read MPU6050 data (accelerometer + gyroscope) in one efficient operation
         esp_err_t mpu_err = mpu6050_read_all(&mpu_data);
-
-        if (task_iteration <= 3) {
-            ESP_LOGE("IMU_TASK", "🔍 MPU6050 READ RESULT #%d: %s", task_iteration, esp_err_to_name(mpu_err));
-        }
-
         esp_err_t mag_err = mag_read(&imu_data.mag_x, &imu_data.mag_y, &imu_data.mag_z);
 
         // Update health tracking counters
@@ -61,14 +48,6 @@ void imu_task(void *parameters) {
             imu_data.gyro_z = mpu_data.gyro_z;
             imu_data.timestamp_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-            // Debug logging - temporary to trace data pipeline
-            static int pipeline_debug_counter = 0;
-            if (++pipeline_debug_counter % 100 == 0) { // Log every 100 samples
-                ESP_LOGI("IMU_TASK", "PIPELINE: AX=%.3f AY=%.3f AZ=%.3f | GX=%.2f GY=%.2f GZ=%.2f | MAG: %.2f,%.2f,%.2f",
-                        imu_data.accel_x, imu_data.accel_y, imu_data.accel_z,
-                        imu_data.gyro_x, imu_data.gyro_y, imu_data.gyro_z,
-                        imu_data.mag_x, imu_data.mag_y, imu_data.mag_z);
-            }
 
             // Send to legacy queue (non-blocking to maintain timing)
             if (xQueueSend(imu_data_queue, &imu_data, 0) != pdTRUE) {
@@ -92,18 +71,15 @@ void imu_task(void *parameters) {
                 }
             }
         } else {
-            ESP_LOGE("IMU_TASK", "❌ MPU6050 READ FAILED: %s", esp_err_to_name(mpu_err));
-            ESP_LOGE("IMU_TASK", "❌ This explains why accelerometer/gyroscope values are zero!");
+            ESP_LOGW("IMU_TASK", "Failed to read MPU6050: %s", esp_err_to_name(mpu_err));
         }
 
         // Log sensor health periodically
         if (++health_counter >= SENSOR_HEALTH_LOG_INTERVAL) {
-            uint32_t mpu_success_rate = mpu_total_reads > 0 ? (mpu_successful_reads * 100) / mpu_total_reads : 0;
-            uint32_t mag_success_rate = mag_total_reads > 0 ? (mag_successful_reads * 100) / mag_total_reads : 0;
-
-            ESP_LOGI("IMU_TASK", "IMU Health - MPU6050: %lu%% (%s) | Mag: %lu%% (%s)",
-                    mpu_success_rate, (mpu_err == ESP_OK) ? "OK" : "FAIL",
-                    mag_success_rate, (mag_err == ESP_OK) ? "OK" : "FAIL");
+            ESP_LOGI("IMU_TASK", "A[%.2f, %.2f, %.2f]g | G[%.1f, %.1f, %.1f]°/s | M[%.1f, %.1f, %.1f]μT",
+                    imu_data.accel_x, imu_data.accel_y, imu_data.accel_z,
+                    imu_data.gyro_x, imu_data.gyro_y, imu_data.gyro_z,
+                    imu_data.mag_x, imu_data.mag_y, imu_data.mag_z);
             health_counter = 0;
         }
 
